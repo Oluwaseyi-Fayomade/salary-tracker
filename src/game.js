@@ -79,12 +79,12 @@ export function clearSave(){try{localStorage.removeItem(STORAGE_KEY)}catch{}}
 export function leaderboard(){try{const x=JSON.parse(localStorage.getItem(LEADER_KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
 export function addLeaderboard(name,s){const row={name:(name||'Player').trim().slice(0,16)||'Player',salary:s.salary,salaryCurrency:s.salaryCurrency||'NGN',salaryAmount:s.salaryAmount||s.salary,score:s.score,money:s.money,savings:s.savings,result:classification(s)[0],date:new Date().toLocaleDateString('en-NG')};const rows=[row,...leaderboard()].sort((a,b)=>b.score-a.score).slice(0,8);try{localStorage.setItem(LEADER_KEY,JSON.stringify(rows))}catch{}return rows;}
 
-export function createBackup(){const game=loadSave(),rows=leaderboard();if(!game&&!rows.length)throw Error('There is no saved game or leaderboard yet.');return JSON.stringify({format:'salary-survival-backup',version:1,exportedAt:new Date().toISOString(),game,leaderboard:rows},null,2)}
+export function createBackup(planner=null){const game=loadSave(),rows=leaderboard();if(!game&&!rows.length&&!planner)throw Error('There is no saved game or monthly plan to back up yet.');return JSON.stringify({format:'salary-survival-backup',version:2,exportedAt:new Date().toISOString(),game,planner,leaderboard:rows},null,2)}
 export function restoreBackup(text){
  const backup=JSON.parse(text);
- if(backup?.format!=='salary-survival-backup'||backup.version!==1)throw Error('This file is not a supported Salary Survival backup.');
+ if(backup?.format!=='salary-survival-backup'||![1,2].includes(backup.version))throw Error('This file is not a supported Salary Survival backup.');
  const game=backup.game===null?null:normalizeGameSave(backup.game);if(backup.game!==null&&!game)throw Error('The save data in this file is incomplete or invalid.');
  const rows=Array.isArray(backup.leaderboard)?backup.leaderboard.filter(row=>row&&typeof row.name==='string'&&Number.isFinite(row.salary)&&Number.isFinite(row.score)&&typeof row.result==='string').slice(0,8).map(row=>({name:row.name.slice(0,16),salary:row.salary,salaryCurrency:/^[A-Z]{3}$/.test(row.salaryCurrency||'')?row.salaryCurrency:'NGN',salaryAmount:Number.isFinite(row.salaryAmount)?row.salaryAmount:row.salary,score:Math.max(0,Math.round(row.score)),money:Number.isFinite(row.money)?row.money:0,savings:Number.isFinite(row.savings)?row.savings:0,result:row.result.slice(0,40),date:typeof row.date==='string'?row.date:''})):[];
  if(game)saveGame(game);else clearSave();try{localStorage.setItem(LEADER_KEY,JSON.stringify(rows))}catch{}
- return {game,leaderboard:rows};
+ return {game,planner:backup.version>=2?backup.planner:null,leaderboard:rows};
 }

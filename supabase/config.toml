@@ -1,0 +1,2 @@
+[functions.mono-webhook]
+verify_jwt = false
