@@ -47,4 +47,4 @@ After setup, a signed-in user must check the consent box, then choose a bank and
 
 ## Hosting
 
-The static app can be deployed to any static host. Cloud sync and bank-link features require the separate Supabase setup above. Local development: serve this folder over HTTP with `python3 -m http.server 8000`, then open `http://localhost:8000/`.
+The static app can be deployed to any static host. Screens have browser-visible hash routes, such as `/#/planner`, `/#/salary`, and `/#/game`; browser Back and Forward navigate between screens. Hash routes keep refreshes compatible with simple static hosts. Cloud sync and bank-link features require the separate Supabase setup above. Local development: serve this folder over HTTP with `python3 -m http.server 8000`, then open `http://localhost:8000/`.
