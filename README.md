@@ -2,6 +2,13 @@
 
 A browser-based monthly budgeting planner and game about making it to payday. The core app needs no build step or package install. Its static files are split into:
 
+- [PRD.md](PRD.md) — product requirements and audience.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — stack, project layout, data flow, and persistence.
+- [DESIGN.md](DESIGN.md) — visual system and interaction guidance.
+- [RULES.md](RULES.md) — coding, privacy, and financial-safety rules.
+- [TASKS.md](TASKS.md) — small completed and pending work items.
+- [PROGRESS.md](PROGRESS.md) — current state, limitations, fixes, and next steps.
+
 - `src/events.js` — 45 modular events and their trade-off choices.
 - `src/game.js` — game state, salary plan, effects, scoring, persistence, and local leaderboard.
 - `src/main.js` — screen rendering and browser interactions.
