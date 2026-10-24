@@ -33,3 +33,13 @@ Last updated: 2026-10-23
 2. Complete Supabase owner setup if cross-device backup is wanted.
 3. Complete Mono setup only if bank transaction import is wanted.
 4. Walk through the planner with real sample data and fix any usability issues before inviting users.
+
+## Data integrity and privacy update (2026-10-23)
+
+- Planner spending now uses the active cycle date range and keeps earlier entries as history; the planner can store foreign-currency income plus the rate used.
+- CSV parsing preserves signed negative debits, skips explicit credit rows, rejects missing/invalid transaction dates, deduplicates against existing and same-file transactions, and presents all detected rows before import.
+- Local backup restore validates the full payload before changing saved data and rolls back failed writes. Cloud restore now validates and commits planner/game together.
+- Added browser-local data deletion, cloud-copy deletion, and a Supabase account-deletion function that attempts Mono unlink before deleting the account.
+- Mono linking and transaction retrieval remain disabled unless `MONO_ENABLED=true` is set server-side.
+- Added `privacy.html` as a draft; owner identity/contact and deployment-specific hosting/retention information remain launch blockers and must be filled in by the operator.
+- These changes received static source inspection only. A live Supabase/Mono setup and browser walkthrough have not been verified.

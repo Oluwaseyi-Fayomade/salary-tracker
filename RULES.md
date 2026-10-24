@@ -28,3 +28,7 @@ These rules apply to contributors and coding assistants working in this project.
 - Keep budget priorities editable and do not silently rebalance user-set allocations.
 - Avoid judgmental, shaming, or guaranteed-outcome language.
 - Do not claim tests, provider connections, hosting, or deployment succeeded unless verified.
+- Keep bank linking off unless the owner explicitly sets `MONO_ENABLED=true` after Mono and privacy setup; enforce this on the server, not only in the UI.
+- Treat restore/import as transactions: validate the complete incoming dataset before writes and roll back partial local commits.
+- Make local deletion and remote cloud/account deletion distinct and explain the scope before confirmation.
+- Keep `privacy.html` marked as a draft until the real operator identity, contact, hosting region, retention details, and review are supplied.

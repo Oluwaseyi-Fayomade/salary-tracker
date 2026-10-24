@@ -28,3 +28,15 @@ Work through one small task at a time. Mark a task done only after the stated co
 - [ ] Add user-requested month rollover and transaction history across months.
 - [ ] Consider recurring bills and reminders after validating the basic monthly workflow with users.
 - [ ] Add automated checks only when a test workflow is introduced and maintained.
+
+## Reliability and privacy fixes
+
+- [x] Bound spending totals to the current pay cycle and retain earlier transactions as history.
+- [x] Preserve original income currency and rate in the monthly planner.
+- [x] Preview CSV entries before import, deduplicate rows, treat signed negative amounts as debits, skip explicit credits, and reject missing/invalid dates.
+- [x] Validate local and cloud restores before committing; roll back partial local writes.
+- [x] Add local data deletion, cloud snapshot deletion, and authenticated cloud-account deletion with Mono unlink first.
+- [x] Gate Mono link/import features behind a server-side disabled-by-default setting.
+- [x] Add a draft privacy/data notice with deployment-owner fields clearly marked.
+- [ ] Replace privacy notice placeholders and verify hosting/provider retention details before public launch.
+- [ ] Deploy and verify the account-deletion Edge Function in the production Supabase project.

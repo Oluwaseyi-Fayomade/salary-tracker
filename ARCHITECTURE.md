@@ -45,3 +45,12 @@ supabase/
 ## Hosting
 
 The core app can be served from a static host. Hash routing avoids needing server-side route rewrites. Supabase and Mono integrations need separate backend deployment and owner credentials; they are not activated by static hosting alone.
+
+## Cycles, imports, and deletion
+
+- `planner.js` stores cycle start/payday and original salary currency/rate; totals are bounded to the active cycle while transaction history remains available.
+- CSV imports are parsed, deduplicated, fully previewed, and only committed after user confirmation. Negative signed amounts are treated as debits; explicit credits/deposits are skipped.
+- Local deletion clears game, planner, leaderboard, FX cache, and cloud sign-in settings on this browser. It does not delete a remote cloud copy.
+- `delete-account` authenticates the user, disconnects a linked Mono account first, then removes the Supabase Auth user; database rows cascade from the user record.
+- `mono-config` only reports availability. Bank-link and transaction functions additionally require `MONO_ENABLED=true`; it is unset/off by default.
+- `privacy.html` documents the prototype’s data flows and identifies owner-supplied details that must be completed before public release.

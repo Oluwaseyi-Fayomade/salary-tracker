@@ -44,3 +44,12 @@ Salary Survival is a browser-based monthly budget planner for people who want a 
 - A user can record or import spending and see its effect on category budgets.
 - A user can leave and return to the app without losing saved local progress.
 - The app clearly communicates when an optional integration is not configured.
+
+## Data handling and cycle behavior
+
+- Count spending only between the saved cycle start and the earlier of today or next payday. Keep older transactions in history when a new cycle starts.
+- Preserve source currency and the published exchange quote used to convert income to NGN.
+- Preview imported CSV debits before adding them; parse signed amounts and require usable dates.
+- Let users export/restore backups, delete this browser’s app data, delete a cloud snapshot, and request deletion of a configured cloud account.
+- Keep Mono linking disabled until the site owner explicitly enables the server-side feature after setup and privacy review.
+- Include an honest draft privacy notice; deployment owner must supply real controller identity, contact, hosting and retention details before inviting users.

@@ -2,6 +2,7 @@ export const FX_STORAGE_KEY='salary-survival-fx-cache-v1';
 export const FX_PROVIDER='ExchangeRate-API';
 const ENDPOINT='https://open.er-api.com/v6/latest/USD';
 let memoryData=null;
+export function clearFxCache(){memoryData=null;try{localStorage.removeItem(FX_STORAGE_KEY)}catch{}}
 
 function parseCache(raw){
  try{
