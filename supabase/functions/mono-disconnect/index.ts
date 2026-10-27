@@ -1,3 +1,29 @@
-import { adminClient, authenticatedUser, corsHeaders } from '../_shared/supabase.ts';
-const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
-Deno.serve(async(request)=>{if(request.method==='OPTIONS')return new Response('ok',{headers:corsHeaders});if(request.method!=='POST')return json({error:'Method not allowed.'},405);try{const {client,user}=await authenticatedUser(request);const {data:link,error:readError}=await client.from('mono_account_links').select('mono_account_id').eq('user_id',user.id).maybeSingle();if(readError)throw readError;if(link?.mono_account_id){const secret=Deno.env.get('MONO_SEC_KEY');if(!secret)throw new Error('Bank service is not configured.');const response=await fetch(`https://api.withmono.com/v2/accounts/${encodeURIComponent(link.mono_account_id)}/unlink`,{method:'POST',headers:{accept:'application/json','mono-sec-key':secret}});if(!response.ok){const result=await response.json().catch(()=>({}));throw new Error(result?.message||'Mono could not disconnect this account.')}}const admin=adminClient();const {error}=await admin.from('mono_account_links').delete().eq('user_id',user.id);if(error)throw error;return json({disconnected:true})}catch(error){return json({error:error instanceof Error?error.message:'Could not disconnect account.'},400)}});
+import { adminClient, allowedOrigin, authenticatedUser, ApiError, enforceRateLimit, errorResponse, jsonResponse, optionsResponse } from '../_shared/supabase.ts';
+
+Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') return allowedOrigin(request) ? optionsResponse(request) : new Response(null, { status: 403 });
+  if (!allowedOrigin(request)) return jsonResponse(request, { error: 'Origin is not allowed.' }, 403);
+  if (request.method !== 'POST') return jsonResponse(request, { error: 'Method not allowed.' }, 405);
+  try {
+    const { client, user } = await authenticatedUser(request);
+    await enforceRateLimit(user.id, 'mono-disconnect', 10, 3600);
+    const { data: link, error: readError } = await client.from('mono_account_links')
+      .select('mono_account_id').eq('user_id', user.id).maybeSingle();
+    if (readError) throw new ApiError('Could not read the bank connection.', 503);
+    if (link?.mono_account_id) {
+      const secret = Deno.env.get('MONO_SEC_KEY');
+      if (!secret) throw new ApiError('The bank service is not configured. Contact the site owner.', 503);
+      let response: Response;
+      try {
+        response = await fetch(`https://api.withmono.com/v2/accounts/${encodeURIComponent(link.mono_account_id)}/unlink`, {
+          method: 'POST', signal: AbortSignal.timeout(10_000),
+          headers: { accept: 'application/json', 'mono-sec-key': secret },
+        });
+      } catch { throw new ApiError('The bank service could not be reached. The link was not removed.', 502); }
+      if (!response.ok) throw new ApiError('The bank service did not confirm disconnection. The link was not removed.', 502);
+    }
+    const { error } = await adminClient().from('mono_account_links').delete().eq('user_id', user.id);
+    if (error) throw new ApiError('The bank link could not be removed from the app.', 503);
+    return jsonResponse(request, { disconnected: true });
+  } catch (error) { return errorResponse(request, error); }
+});

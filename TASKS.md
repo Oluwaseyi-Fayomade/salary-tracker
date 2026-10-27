@@ -13,11 +13,12 @@ Work through one small task at a time. Mark a task done only after the stated co
 - [x] Add optional consent-based Mono linking and transaction import backend code.
 - [x] Add browser-visible screen routes and Back/Forward navigation.
 - [x] Document the product, architecture, design, rules, tasks, and current progress.
+- [x] Harden the static deployment, Supabase Edge Functions, browser data validation, and add security regression checks.
 
 ## Owner setup before launch
 
 - [ ] Choose a production static host and publish the app over HTTPS.
-- [ ] Create/configure the Supabase project, run the migration, enable email sign-in, and deploy Edge Functions.
+- [ ] Create/configure the Supabase project, run both migrations in order, enable email sign-in, set exact allowed origins, and deploy Edge Functions.
 - [ ] Configure required Supabase function secrets and validate cloud backup behavior with a test account.
 - [ ] Create/configure a Mono developer account, webhook URL, and secrets before enabling bank links for users.
 - [ ] Review privacy, retention, consent copy, and provider terms before production use.
@@ -27,7 +28,7 @@ Work through one small task at a time. Mark a task done only after the stated co
 
 - [ ] Add user-requested month rollover and transaction history across months.
 - [ ] Consider recurring bills and reminders after validating the basic monthly workflow with users.
-- [ ] Add automated checks only when a test workflow is introduced and maintained.
+- [x] Add maintained automated security regression checks and a CI workflow.
 
 ## Reliability and privacy fixes
 

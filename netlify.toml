@@ -1,2 +1,3 @@
 [build]
-  publish = "."
+  command = "mkdir -p dist && cp index.html styles.css favicon.svg privacy.html _headers dist/ && cp -R src dist/src"
+  publish = "dist"

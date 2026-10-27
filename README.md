@@ -40,9 +40,9 @@ The home screen shows a daily USD-to-NGN reference rate and has a **Refresh rate
 
 Cloud sync is implemented, but needs a Supabase project before it can be used:
 
-1. Create a Supabase project and run `supabase/migrations/20261001000100_planner_cloud.sql` in its SQL editor.
+1. Create a Supabase project and run both migrations in timestamp order in its SQL editor: `supabase/migrations/20261001000100_planner_cloud.sql`, then `supabase/migrations/20261027000100_security_hardening.sql`. Apply the second migration before deploying the hardened functions; they fail closed if the rate-limit RPC is unavailable.
 2. In Supabase Auth, enable email sign-in and set the deployed site's URL in the redirect allowlist.
-3. Deploy the functions in `supabase/functions/` with the Supabase CLI. Set the project's publishable key and URL in the planner's **Use your account on another device** panel. Never put a Supabase secret/service key in the website.
+3. Deploy the functions in `supabase/functions/` with the Supabase CLI. Set server-side `APP_URL` to the exact HTTPS site origin (for example `https://your-site.netlify.app`) and `APP_ALLOWED_ORIGINS` to any additional exact origins, comma-separated. Use no wildcard origins. Set `APP_ENV=development` only for local development. Set the project's publishable key and URL in the planner's **Use your account on another device** panel. Never put a Supabase secret/service key in the website.
 4. Users explicitly choose when to save, load, or delete a cloud copy. A separate **Delete account & cloud data** action invokes the authenticated `delete-account` Edge Function, unlinks a connected Mono account first, and then deletes the Supabase Auth user (dependent rows cascade). This function must be deployed and verified by the owner.
 
 The planner dynamically loads the Supabase JS client from `https://esm.sh` only after the user configures cloud settings. The static planner and local backups do not require Supabase.
@@ -63,4 +63,10 @@ The static app can be deployed to any static host. Screens have browser-visible 
 
 ## Netlify hosting
 
-The core app has no build command. The repository includes `netlify.toml` with the site root as its publish directory. For a one-time preview, upload the prepared `outputs/salary-survival-netlify/` folder using Netlify Drop. For automatic deploys, connect the `salary-tracker` GitHub repository after the latest app changes have been pushed; keep the build command empty and publish directory `.`. Netlify manual/drag-and-drop deploys publish the folder as a live URL, so confirm the intended visibility before deploying. Supabase cloud and Mono functions remain separate services and are not deployed by the static-site upload.
+The repository includes `netlify.toml`; its build copies only the static app into `dist/`, and Netlify publishes `dist/`. For a one-time preview, upload the prepared `outputs/salary-survival-netlify/` folder using Netlify Drop. Supabase cloud and Mono functions remain separate services and are not deployed by the static-site upload.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for the threat model, implemented controls, verification steps, and production launch blockers. Browser financial data and exported backup files are not encrypted by the app; protect the device and any backup location. The app is a personal planner, not a verified bank ledger.
+
+Run the local regression checks with `npm test` (Node.js 20 or newer). They do not contact Supabase, Mono, or production services.

@@ -1,6 +1,7 @@
 import { EXPENSES, initialPlan, initialPriorities } from './game.js?planner-cloud=20261031';
 
 export const PLANNER_KEY = 'salary-survival-monthly-planner-v1';
+export const MAX_FINANCIAL_AMOUNT = 1_000_000_000_000;
 const FLEX_CATEGORIES = new Set(['food', 'transport', 'carFuel', 'generatorFuel', 'data', 'gas', 'household', 'family', 'fun']);
 
 export function localDateValue(date = new Date()) {
@@ -39,18 +40,18 @@ export function createInitialPlanner(income = 0) {
 }
 
 export function normalizePlanner(planner) {
-  if (!planner || typeof planner !== 'object' || !Number.isFinite(Number(planner.income)) || Number(planner.income) < 0) return null;
+  if (!planner || typeof planner !== 'object' || !Number.isSafeInteger(Number(planner.income)) || Number(planner.income) < 0 || Number(planner.income) > MAX_FINANCIAL_AMOUNT) return null;
   const expenses = { ...initialPlan(Number(planner.income)), ...(planner.expenses || {}) };
   if (Number(planner.expenses?.tithe) === Math.round(Number(planner.income) * .025 / 1000) * 1000) {
     expenses.tithe = initialPlan(Number(planner.income)).tithe;
   }
   expenses.savings = (Number(expenses.savings) || 0) + (Number(planner.expenses?.emergency) || 0);
   delete expenses.emergency;
-  if (EXPENSES.some(category => !Number.isFinite(Number(expenses[category.id])) || Number(expenses[category.id]) < 0)) return null;
+  if (EXPENSES.some(category => !Number.isSafeInteger(Number(expenses[category.id])) || Number(expenses[category.id]) < 0 || Number(expenses[category.id]) > MAX_FINANCIAL_AMOUNT)) return null;
   const sourceCurrency = /^[A-Z]{3}$/.test(planner.sourceCurrency || '') ? planner.sourceCurrency : 'NGN';
   const sourceAmount = Number(planner.sourceAmount ?? planner.income);
   const exchangeRate = Number(planner.exchangeRate ?? 1);
-  if (!Number.isFinite(sourceAmount) || sourceAmount < 0 || !Number.isFinite(exchangeRate) || exchangeRate <= 0) return null;
+  if (!Number.isFinite(sourceAmount) || sourceAmount < 0 || sourceAmount > MAX_FINANCIAL_AMOUNT || !Number.isFinite(exchangeRate) || exchangeRate <= 0 || exchangeRate > 1_000_000_000) return null;
   const priorities = {
     ...initialPriorities(),
     ...Object.fromEntries(Object.entries(planner.priorities || {}).filter(([id, value]) =>
@@ -59,7 +60,7 @@ export function normalizePlanner(planner) {
   const transactions = Array.isArray(planner.transactions)
     ? planner.transactions.filter(transaction => transaction && typeof transaction.id === 'string'
       && (transaction.category === 'emergency' || EXPENSES.some(category => category.id === transaction.category))
-      && Number.isFinite(Number(transaction.amount)) && Number(transaction.amount) > 0
+      && Number.isSafeInteger(Number(transaction.amount)) && Number(transaction.amount) > 0
       && Number(transaction.amount) <= 1_000_000_000)
       .slice(-5000)
       .map(transaction => ({
@@ -229,8 +230,11 @@ function matchCategory(value) {
 }
 
 export function parseSpendingCsv(text, defaultCategory = 'food', dateOrder = 'DMY') {
-  const rows = csvRows(String(text).replace(/^\uFEFF/, ''));
+  const source = String(text);
+  if (new TextEncoder().encode(source).byteLength > 5 * 1024 * 1024) throw Error('Choose a CSV file under 5 MB.');
+  const rows = csvRows(source.replace(/^\uFEFF/, ''));
   if (rows.length < 2) throw Error('The CSV needs a header row and at least one transaction.');
+  if (rows.length > 5001) throw Error('A CSV import can contain at most 5,000 transaction rows.');
   const headers = rows[0].map(value => value.toLowerCase().replace(/[^a-z]/g, ''));
   const find = names => headers.findIndex(header => names.includes(header));
   const dateAt = find(['date', 'transactiondate', 'valuedate', 'posteddate']);
@@ -250,6 +254,7 @@ export function parseSpendingCsv(text, defaultCategory = 'food', dateOrder = 'DM
     const direction = `${categoryText} ${typeText}`;
     if (debitAt < 0 && creditAt >= 0 && numberValue(row[creditAt]) > 0) return;
     if (!amount || /credit|deposit|income|transfer\s*in/.test(direction)) return;
+    if (!Number.isSafeInteger(Math.round(Math.abs(amount))) || Math.abs(amount) > 1_000_000_000) throw Error(`Transaction on CSV row ${index + 2} is above the supported amount limit.`);
     const date = dateISO(row[dateAt], dateOrder);
     parsed.push({
       category: matchCategory(row[categoryAt]) || matchCategory(row[typeAt]) || defaultCategory,

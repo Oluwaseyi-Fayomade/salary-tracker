@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-10-23
+Last updated: 2026-10-27
 
 ## Done
 
@@ -11,14 +11,17 @@ Last updated: 2026-10-23
 - Added optional Mono bank-link and transaction-import Edge Function code with explicit consent and server-side secret requirements.
 - Added a visible home control, direct brand link, and hash routes for app screens; the planner route renders at `#/planner` and supports browser Back/Forward.
 - Added project requirements, architecture, design, rules, and task documents.
+- Hardened browser validation, static hosting headers, Supabase function boundaries, and database-backed rate limits; documented deployment checks in `SECURITY.md`.
+- Added security regression tests and a GitHub Actions workflow. All 9 local security checks pass.
 
 ## Known limitations / setup still required
 
 - Core planning and the game store data in the current browser unless the user exports a backup or explicitly configures cloud sync.
-- Supabase cloud backup is code-complete but needs a site-owner project, migration, email auth configuration, function deployment, and secrets.
+- Supabase cloud backup is code-complete but needs a site-owner project, both migrations, exact allowed origins, email auth configuration, function deployment, and secrets.
 - Mono linking is code-complete but not live until the site owner configures a Mono developer account, webhook, function deployment, and server secrets.
 - Exchange rates are references/estimates and may differ from a payroll or transfer provider. Refresh can only retrieve the latest rate the provider has published.
 - A static local HTTP server is for development; public hosting and service setup are not yet confirmed.
+- Browser storage, downloaded backups, and Supabase browser sessions are not encrypted by the app. The owner must configure provider dashboards and complete the privacy notice before launch.
 
 ## Recent fixes
 
@@ -43,3 +46,12 @@ Last updated: 2026-10-23
 - Mono linking and transaction retrieval remain disabled unless `MONO_ENABLED=true` is set server-side.
 - Added `privacy.html` as a draft; owner identity/contact and deployment-specific hosting/retention information remain launch blockers and must be filled in by the operator.
 - These changes received static source inspection only. A live Supabase/Mono setup and browser walkthrough have not been verified.
+
+## Security hardening (2026-10-27)
+
+- Replaced wildcard function CORS with exact configured origins; added method/auth/input limits, timeouts, bounded provider payloads, safe errors, and no-store responses.
+- Added an atomic per-user rate-limit RPC and bounded cloud snapshot constraints in a new migration. Apply it before deploying the updated functions.
+- Added CSP and related static-host headers; changed Netlify build output to `dist/` so source, migrations, and internal docs are not published.
+- Added input/save regression tests and CI. The local test suite passes (9 checks); JavaScript syntax checks pass.
+- Rebuilt the Netlify Drop folder and source ZIP after hardening.
+- Live provider project configuration, deployed HTTP headers, database migration execution, and a browser walkthrough remain unverified.

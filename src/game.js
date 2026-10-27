@@ -29,10 +29,11 @@ export function initialPriorities(){return Object.fromEntries(EXPENSES.map(x=>[x
 const validPriority=value=>['protect','important','reduce'].includes(value)?value:null;
 const EVENT_IDS=new Set(EVENTS.map(event=>event.id));
 const clampSalary=n=>Number.isFinite(n)?Math.round(Math.min(1000000000000,Math.max(50000,n))):0;
+const validMoney=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000000000000;
 export function initialPlan(salary){return Object.fromEntries(EXPENSES.map(x=>[x.id,Math.round(salary*x.base/1000)*1000]));}
 export function createGame(salary,expenses,currencyMeta={currency:'NGN',amount:salary,rate:1,rateDate:null},priorities=initialPriorities()){
  salary=clampSalary(Number(salary));if(!salary)throw Error('Enter a valid salary of at least ₦50,000.');
- const plan={...initialPlan(salary),...expenses};const committed=Object.entries(plan).filter(([key])=>key!=='savings'&&key!=='emergency').reduce((a,[,v])=>a+Math.max(0,Number(v)||0),0);
+ const plan={...initialPlan(salary),...expenses};if(Object.entries(plan).some(([key,value])=>(key!=='emergency'&&!EXPENSES.some(category=>category.id===key))||!validMoney(Number(value)))||!validMoney(Number(plan.savings||0)+Number(plan.emergency||0)))throw Error('Each expense must be a whole-naira amount within the supported limit.');const committed=Object.entries(plan).filter(([key])=>key!=='savings'&&key!=='emergency').reduce((a,[,v])=>a+Number(v),0);
  const savings=(plan.savings||0)+(plan.emergency||0);const opening=Math.max(0,salary-committed-savings);
  return {salary,salaryCurrency:currencyMeta.currency||'NGN',salaryAmount:Number(currencyMeta.amount)||salary,exchangeRate:Number(currencyMeta.rate)||1,exchangeRateDate:currencyMeta.rateDate||null,exchangeRateStale:Boolean(currencyMeta.stale),currentDay:1,money:opening,savings,debt:0,happiness:68,stress:27,health:84,financialStability:Math.round(40+Math.min(30,opening/salary*100)),expenses:plan,priorities:{...initialPriorities(),...Object.fromEntries(Object.entries(priorities||{}).filter(([key,value])=>EXPENSES.some(x=>x.id===key)&&validPriority(value)))},spendingLog:[],totalSpent:committed,eventsCompleted:[],score:0,gameStatus:'playing',currentEvent:null,daysSurvived:0,history:[],createdAt:new Date().toISOString()};
 }
@@ -69,19 +70,19 @@ export function classification(s){if(s.financialStability<20||s.debt>s.salary*.4
 export function finishGame(s){const done={...s,gameStatus:s.gameStatus==='over'?'over':'complete',daysSurvived:s.currentDay===30?30:(s.daysSurvived||s.currentDay),score:0};done.score=scoreGame(done);return done;}
 export function shareText(s){const [name,emoji]=classification(s),salaryLine=s.salaryCurrency&&s.salaryCurrency!=='NGN'?`${formatNaira(s.salary)} equivalent (${new Intl.NumberFormat('en',{style:'currency',currency:s.salaryCurrency,maximumFractionDigits:2}).format(s.salaryAmount)})`:`${formatNaira(s.salary)}`;return `I survived a ${salaryLine} month in Salary Survival 🇳🇬\n\nSaved ${formatNaira(s.savings)}\nHappiness: ${s.happiness}%\nStress: ${s.stress}%\n\nResult: ${name} ${emoji}\nScore: ${s.score.toLocaleString()}\n\nCan you beat my score?`;}
 function normalizeGameSave(s){
- if(!s||typeof s!=='object'||!Number.isFinite(s.salary)||s.salary<50000||!Number.isFinite(s.currentDay)||s.currentDay<1||s.currentDay>30||!['playing','complete','over'].includes(s.gameStatus))return null;
+ if(!s||typeof s!=='object'||!Number.isSafeInteger(s.salary)||s.salary<50000||s.salary>1000000000000||!Number.isSafeInteger(s.currentDay)||s.currentDay<1||s.currentDay>30||!['playing','complete','over'].includes(s.gameStatus))return null;
  if(!['money','savings','debt','happiness','stress','health','financialStability','totalSpent'].every(k=>Number.isFinite(s[k])))return null;
- if([s.money,s.savings,s.debt,s.totalSpent].some(n=>n<0)||['happiness','stress','health','financialStability'].some(k=>s[k]<0||s[k]>100))return null;
- if(!s.expenses||typeof s.expenses!=='object'||Object.values(s.expenses).some(value=>!Number.isFinite(value)||value<0))return null;
+ if([s.money,s.savings,s.debt,s.totalSpent].some(n=>!Number.isSafeInteger(n)||n<0||n>1000000000000000)||['happiness','stress','health','financialStability'].some(k=>!Number.isSafeInteger(s[k])||s[k]<0||s[k]>100))return null;
+ if(!s.expenses||typeof s.expenses!=='object'||Object.entries(s.expenses).some(([key,value])=>(key!=='emergency'&&!EXPENSES.some(category=>category.id===key))||!validMoney(value)))return null;
  if(!Array.isArray(s.eventsCompleted)||s.eventsCompleted.some(id=>!EVENT_IDS.has(id)))return null;
  if(s.currentEvent&&(!EVENT_IDS.has(s.currentEvent.id)||!s.eventsCompleted.includes(s.currentEvent.id)))return null;
  if(s.salaryCurrency!==undefined&&!/^[A-Z]{3}$/.test(s.salaryCurrency))return null;
- if(s.salaryAmount!==undefined&&(!Number.isFinite(s.salaryAmount)||s.salaryAmount<=0))return null;
- if(s.exchangeRate!==undefined&&(!Number.isFinite(s.exchangeRate)||s.exchangeRate<=0))return null;
- const expenses={...initialPlan(s.salary),...s.expenses};if(Number(s.expenses.tithe)===Math.round(s.salary*.025/1000)*1000)expenses.tithe=initialPlan(s.salary).tithe;expenses.savings=(Number(expenses.savings)||0)+(Number(s.expenses.emergency)||0);delete expenses.emergency;
+ if(s.salaryAmount!==undefined&&(!Number.isFinite(s.salaryAmount)||s.salaryAmount<=0||s.salaryAmount>1000000000000))return null;
+ if(s.exchangeRate!==undefined&&(!Number.isFinite(s.exchangeRate)||s.exchangeRate<=0||s.exchangeRate>1000000000))return null;
+ const expenses={...initialPlan(s.salary),...s.expenses};if(Number(s.expenses.tithe)===Math.round(s.salary*.025/1000)*1000)expenses.tithe=initialPlan(s.salary).tithe;expenses.savings=(Number(expenses.savings)||0)+(Number(s.expenses.emergency)||0);delete expenses.emergency;if(!validMoney(expenses.savings))return null;
  const currentEvent=s.currentEvent?EVENTS.find(event=>event.id===s.currentEvent.id):null;
  const priorities={...initialPriorities(),...Object.fromEntries(Object.entries(s.priorities||{}).filter(([key,value])=>EXPENSES.some(x=>x.id===key)&&validPriority(value)))};
- const spendingLog=Array.isArray(s.spendingLog)?s.spendingLog.filter(x=>x&&typeof x.id==='string'&&(x.category==='emergency'||EXPENSES.some(category=>category.id===x.category))&&Number.isFinite(x.amount)&&x.amount>0&&x.amount<=1000000000).slice(-1000).map(x=>({id:x.id,category:x.category==='emergency'?'savings':x.category,amount:Math.round(x.amount),note:typeof x.note==='string'?x.note.slice(0,80):'',date:typeof x.date==='string'?x.date:''})):[];
+ const spendingLog=Array.isArray(s.spendingLog)?s.spendingLog.filter(x=>x&&typeof x.id==='string'&&(x.category==='emergency'||EXPENSES.some(category=>category.id===x.category))&&Number.isSafeInteger(x.amount)&&x.amount>0&&x.amount<=1000000000).slice(-1000).map(x=>({id:x.id,category:x.category==='emergency'?'savings':x.category,amount:x.amount,note:typeof x.note==='string'?x.note.slice(0,80):'',date:typeof x.date==='string'?x.date:''})):[];
  return {...s,expenses,priorities,spendingLog,salaryCurrency:s.salaryCurrency||'NGN',salaryAmount:Number.isFinite(s.salaryAmount)?s.salaryAmount:s.salary,exchangeRate:Number.isFinite(s.exchangeRate)?s.exchangeRate:1,exchangeRateDate:s.exchangeRateDate||null,exchangeRateStale:Boolean(s.exchangeRateStale),currentEvent};
 }
 export function loadSave(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return null;const s=normalizeGameSave(JSON.parse(raw));if(!s)throw Error('Invalid save');return s}catch{try{localStorage.removeItem(STORAGE_KEY)}catch{}return null}}
