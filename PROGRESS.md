@@ -12,7 +12,13 @@ Last updated: 2026-10-27
 - Added a visible home control, direct brand link, and hash routes for app screens; the planner route renders at `#/planner` and supports browser Back/Forward.
 - Added project requirements, architecture, design, rules, and task documents.
 - Hardened browser validation, static hosting headers, Supabase function boundaries, and database-backed rate limits; documented deployment checks in `SECURITY.md`.
-- Added security regression tests and a GitHub Actions workflow. All 9 local security checks pass.
+- Added regression tests and a GitHub Actions workflow. All 13 local checks pass.
+- Made monthly planning the main home-screen action and clarified that the money game is a simulation.
+- Grouped planner budgets into expandable sections, made planned/paid/unpaid/unallocated amounts easier to scan, and added a direct jump to spending entry.
+- Marked the home salary illustration as sample data, preserved exact user-entered zero budgets, and improved narrow-screen controls and reduced-motion behavior.
+- Reworded game outcomes to avoid mocking players who finish with debt or little cash; made disabled spending controls look disabled.
+- Updated previously saved local leaderboard labels to the new wording when displayed.
+- Verified the planner at a 390 px viewport with no horizontal overflow and all 20 categories available; smoke-tested plan save, unpaid bill entry, and marking it paid in a temporary isolated copy, then cleared that test data.
 
 ## Known limitations / setup still required
 

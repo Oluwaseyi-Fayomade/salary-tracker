@@ -41,4 +41,4 @@
 
 ## Verification
 
-Run `npm test` with Node.js 20 or newer. The checks cover planner/game input bounds, backup/save handling, migration permissions, CSP directives, and bank-link safeguards. They are regression tests, not exhaustive security testing. Before launch, review against [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) and the [OWASP API Security Top 10](https://owasp.org/API-Security/).
+Run `npm test` with Node.js 20 or newer. The checks cover planner/game input bounds, backup/save handling, migration permissions, CSP directives, bank-link safeguards, and the home/planner UX safeguards. They are regression tests, not exhaustive security testing. Before launch, review against [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) and the [OWASP API Security Top 10](https://owasp.org/API-Security/).

@@ -33,7 +33,20 @@ Current CSS tokens in `styles.css`:
 - Standalone monthly planner with safe-to-spend card, editable category allocations, manual ledger, CSV import, and backup controls.
 - Optional cloud and bank setup inside a disclosure panel to keep advanced setup out of the main planning flow.
 - Use visible focus states, accessible labels, responsive layouts, and clear disabled states.
+- The monthly planner is the primary home-screen action; the decision game is an optional secondary path.
+- Show current income conversion, planned amounts, recorded payments, unpaid bills, and unallocated buffer together.
+- Group the 20 editable categories into native disclosures. Keep everyday essentials open; summarize other groups before the user expands them.
+- Mark all illustrative amounts as examples. Never make a sample salary look like connected or entered account data.
+- Keep budget amounts user-entered. A zero remains zero; do not silently insert suggested values when saving.
+- Provide a direct shortcut from the plan setup to bill and spending entry.
 
 ## Content tone
 
 Use plain, supportive language. Explain estimates and setup requirements next to the feature that needs them. Never shame users for spending or imply that an estimate is a guarantee.
+
+## Mobile and accessibility
+
+- Keep disclosure summaries keyboard-operable and communicate expanded state through native `<details>` behavior.
+- Use clear text for budget status; color is supplementary.
+- On small screens, use a single column for category details and controls large enough to tap without zooming.
+- Respect `prefers-reduced-motion` and retain visible keyboard focus.

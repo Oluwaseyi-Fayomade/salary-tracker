@@ -14,6 +14,7 @@ Work through one small task at a time. Mark a task done only after the stated co
 - [x] Add browser-visible screen routes and Back/Forward navigation.
 - [x] Document the product, architecture, design, rules, tasks, and current progress.
 - [x] Harden the static deployment, Supabase Edge Functions, browser data validation, and add security regression checks.
+- [x] Make monthly planning the main entry point, group category budgets, clarify sample data, and improve mobile and accessibility details.
 
 ## Owner setup before launch
 

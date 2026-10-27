@@ -7,6 +7,10 @@ import { EXPENSES, STORAGE_KEY, createGame, initialPlan, loadSave } from '../src
 const migration = await readFile(new URL('../supabase/migrations/20261027000100_security_hardening.sql', import.meta.url), 'utf8');
 const headers = await readFile(new URL('../_headers', import.meta.url), 'utf8');
 const monoFunctions = await readFile(new URL('../supabase/functions/mono-link/index.ts', import.meta.url), 'utf8');
+const appSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const gameSource = await readFile(new URL('../src/game.js', import.meta.url), 'utf8');
+const styles = await readFile(new URL('../styles.css', import.meta.url), 'utf8');
 
 test('planner accepts a normal bounded plan', () => {
   const plan = createInitialPlanner(250_000);
@@ -75,4 +79,36 @@ test('bank-link endpoint prevents replacing an active link and rate limits attem
   assert.match(monoFunctions, /enforceRateLimit\(user\.id, 'mono-link', 1, 60\)/);
   assert.match(monoFunctions, /existing\?\.mono_account_id/);
   assert.match(monoFunctions, /linkUrl\.hostname !== 'link\.mono\.co'/);
+});
+
+
+test('home screen makes planning primary and labels illustrative money as sample data', () => {
+  assert.match(appSource, /PLAN THIS MONTH/);
+  assert.match(appSource, /TRY THE MONEY GAME/);
+  assert.match(appSource, /MONTHLY PAY[\s\S]*EXAMPLE[\s\S]*no account data/);
+  assert.doesNotMatch(appSource, /Salary received · Day 01/);
+  assert.match(html, /Plan your pay\. Make it last\./i);
+});
+
+test('planner groups budgets, exposes remaining income, and keeps zero amounts user-controlled', () => {
+  assert.match(appSource, /plannerBudgetGroupMarkup/);
+  assert.match(appSource, /data-planner-budget-group/);
+  assert.match(appSource, /id="planner-unallocated"/);
+  assert.match(appSource, /id="jump-to-activity"/);
+  assert.doesNotMatch(appSource, /useSuggested/);
+});
+
+
+test('game report labels describe outcomes without blaming or mocking the player', () => {
+  const outcomeCode = gameSource.slice(gameSource.indexOf('export function classification'), gameSource.indexOf('export function finishGame'));
+  for (const label of ['DEBT SURVIVOR', 'PAYDAY MILLIONAIRE', 'FAMILY ATM', 'FINANCIAL CHAOS', 'PROFESSIONAL SPENDER']) {
+    assert.doesNotMatch(outcomeCode, new RegExp(label));
+  }
+  assert.match(gameSource, /'FAMILY ATM':'FAMILY SUPPORT'/);
+  assert.match(gameSource, /NEEDS A RESET/);
+});
+
+test('disabled transaction controls are visibly disabled and mobile inputs stay readable', () => {
+  assert.match(styles, /button:disabled\{opacity:/);
+  assert.match(styles, /planner-settings input,\.planner-settings select[\s\S]*font-size:16px/);
 });
