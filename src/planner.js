@@ -1,7 +1,7 @@
-import { EXPENSES, initialPlan, initialPriorities } from './game.js?planner-cloud=20261001';
+import { EXPENSES, initialPlan, initialPriorities } from './game.js?planner-cloud=20261031';
 
 export const PLANNER_KEY = 'salary-survival-monthly-planner-v1';
-const FLEX_CATEGORIES = new Set(['food', 'transport', 'family', 'fun']);
+const FLEX_CATEGORIES = new Set(['food', 'transport', 'carFuel', 'generatorFuel', 'data', 'gas', 'household', 'family', 'fun']);
 
 export function localDateValue(date = new Date()) {
   const value = new Date(date);
@@ -41,6 +41,11 @@ export function createInitialPlanner(income = 0) {
 export function normalizePlanner(planner) {
   if (!planner || typeof planner !== 'object' || !Number.isFinite(Number(planner.income)) || Number(planner.income) < 0) return null;
   const expenses = { ...initialPlan(Number(planner.income)), ...(planner.expenses || {}) };
+  if (Number(planner.expenses?.tithe) === Math.round(Number(planner.income) * .025 / 1000) * 1000) {
+    expenses.tithe = initialPlan(Number(planner.income)).tithe;
+  }
+  expenses.savings = (Number(expenses.savings) || 0) + (Number(planner.expenses?.emergency) || 0);
+  delete expenses.emergency;
   if (EXPENSES.some(category => !Number.isFinite(Number(expenses[category.id])) || Number(expenses[category.id]) < 0)) return null;
   const sourceCurrency = /^[A-Z]{3}$/.test(planner.sourceCurrency || '') ? planner.sourceCurrency : 'NGN';
   const sourceAmount = Number(planner.sourceAmount ?? planner.income);
@@ -53,15 +58,17 @@ export function normalizePlanner(planner) {
   };
   const transactions = Array.isArray(planner.transactions)
     ? planner.transactions.filter(transaction => transaction && typeof transaction.id === 'string'
-      && EXPENSES.some(category => category.id === transaction.category)
+      && (transaction.category === 'emergency' || EXPENSES.some(category => category.id === transaction.category))
       && Number.isFinite(Number(transaction.amount)) && Number(transaction.amount) > 0
       && Number(transaction.amount) <= 1_000_000_000)
       .slice(-5000)
       .map(transaction => ({
         id: transaction.id,
-        category: transaction.category,
+        category: transaction.category === 'emergency' ? 'savings' : transaction.category,
         amount: Math.round(Number(transaction.amount)),
         date: parseLocalDate(transaction.date) ? transaction.date : localDateValue(),
+        status: transaction.status === 'unpaid' ? 'unpaid' : 'paid',
+        paidAt: transaction.status === 'unpaid' ? null : (parseLocalDate(transaction.paidAt) ? transaction.paidAt : (parseLocalDate(transaction.date) ? transaction.date : localDateValue())),
         note: typeof transaction.note === 'string' ? transaction.note.slice(0, 120) : '',
         externalId: typeof transaction.externalId === 'string' ? transaction.externalId.slice(0, 160) : '',
       }))
@@ -110,31 +117,44 @@ export function startNextCycle(planner, today = localDateValue()) {
   });
 }
 
-function currentCycleTransactions(planner, today) {
+function currentCycleTransactions(planner, today, status = 'paid') {
   const end = today < planner.payDate ? today : planner.payDate;
-  return planner.transactions.filter(transaction => transaction.date >= planner.periodStart && transaction.date <= end);
+  return planner.transactions.filter(transaction => {
+    if (transaction.status !== status) return false;
+    if (status === 'unpaid') return transaction.date <= planner.payDate;
+    const paidDate = transaction.paidAt || transaction.date;
+    return paidDate >= planner.periodStart && paidDate <= end;
+  });
+}
+
+function categoryTotals(transactions) {
+  return Object.fromEntries(EXPENSES.map(category => [category.id,
+    transactions.filter(transaction => transaction.category === category.id).reduce((sum, transaction) => sum + transaction.amount, 0)]));
 }
 
 export function transactionTotals(planner, today = localDateValue()) {
-  const transactions = currentCycleTransactions(planner, today);
-  return Object.fromEntries(EXPENSES.map(category => [category.id,
-    transactions.filter(transaction => transaction.category === category.id).reduce((sum, transaction) => sum + transaction.amount, 0)]));
+  return categoryTotals(currentCycleTransactions(planner, today, 'paid'));
+}
+
+export function pendingTransactionTotals(planner, today = localDateValue()) {
+  return categoryTotals(currentCycleTransactions(planner, today, 'unpaid'));
 }
 
 export function safeToSpend(planner, today = new Date()) {
   const todayKey = localDateValue(today);
   const totals = transactionTotals(planner, todayKey);
+  const pending = pendingTransactionTotals(planner, todayKey);
   const now = parseLocalDate(todayKey) || new Date();
   now.setHours(0, 0, 0, 0);
   const payday = parseLocalDate(planner.payDate) || now;
   const daysLeft = Math.max(1, Math.ceil((payday - now) / 86400000) + 1);
   const allocated = EXPENSES.reduce((sum, category) => sum + planner.expenses[category.id], 0);
-  const overBudget = EXPENSES.reduce((sum, category) => sum + Math.max(0, totals[category.id] - planner.expenses[category.id]), 0);
+  const overBudget = EXPENSES.reduce((sum, category) => sum + Math.max(0, totals[category.id] + pending[category.id] - planner.expenses[category.id]), 0);
   const buffer = Math.max(0, planner.income - allocated - overBudget);
-  const flexible = [...FLEX_CATEGORIES].reduce((sum, id) => sum + Math.max(0, planner.expenses[id] - totals[id]), 0);
+  const flexible = [...FLEX_CATEGORIES].reduce((sum, id) => sum + Math.max(0, planner.expenses[id] - totals[id] - pending[id]), 0);
   const daily = (buffer + flexible) / daysLeft;
   const spentToday = currentCycleTransactions(planner, todayKey)
-    .filter(transaction => FLEX_CATEGORIES.has(transaction.category) && transaction.date === todayKey)
+    .filter(transaction => transaction.status === 'paid' && FLEX_CATEGORIES.has(transaction.category) && (transaction.paidAt || transaction.date) === todayKey)
     .reduce((sum, transaction) => sum + transaction.amount, 0);
   return {
     daysLeft,
@@ -142,6 +162,8 @@ export function safeToSpend(planner, today = new Date()) {
     spentToday,
     remainingToday: planner.ready ? Math.max(0, Math.floor(daily - spentToday)) : 0,
     totals,
+    pendingTotals: pending,
+    pendingTotal: Object.values(pending).reduce((sum, amount) => sum + amount, 0),
     buffer,
     expired: isPlannerExpired(planner, todayKey),
   };

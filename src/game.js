@@ -4,16 +4,26 @@ export const formatNaira=n=>`₦${Math.round(Math.abs(n)).toLocaleString('en-NG'
 export const compactNaira=n=>Math.abs(n)>=1e6?`₦${(Math.abs(n)/1e6).toFixed(Math.abs(n)%1e6?1:0)}m`:Math.abs(n)>=1000?`₦${Math.round(Math.abs(n)/1000)}k`:formatNaira(n);
 export const clamp=(n,min=0,max=100)=>Math.min(max,Math.max(min,Math.round(n)));
 export const EXPENSES=[
- {id:'rent',name:'Rent & housing',icon:'🏠',mandatory:true,base:.28,max:.42},
- {id:'food',name:'Food & groceries',icon:'🍲',mandatory:true,base:.17,max:.28},
- {id:'transport',name:'Transport',icon:'🚌',mandatory:true,base:.09,max:.17},
- {id:'electricity',name:'Electricity',icon:'💡',mandatory:true,base:.055,max:.12},
- {id:'data',name:'Internet & data',icon:'📱',mandatory:true,base:.035,max:.08},
- {id:'family',name:'Family support',icon:'🤝',mandatory:false,base:.06,max:.2},
+ {id:'food',name:'Food & groceries',icon:'🍲',mandatory:true,base:.14,max:.28},
+ {id:'transport',name:'Transportation',icon:'🚌',mandatory:true,base:.07,max:.17},
+ {id:'carFuel',name:'Car fuel',icon:'⛽',mandatory:false,base:0,max:.2},
+ {id:'carMaintenance',name:'Car maintenance & servicing',icon:'🔧',mandatory:false,base:0,max:.15},
+ {id:'electricity',name:'Electricity',icon:'💡',mandatory:true,base:.04,max:.12},
+ {id:'generatorFuel',name:'Generator fuel',icon:'🛢️',mandatory:false,base:0,max:.15},
+ {id:'water',name:'Water',icon:'🚰',mandatory:true,base:.015,max:.06},
+ {id:'data',name:'Internet & mobile data',icon:'📱',mandatory:true,base:.025,max:.08},
+ {id:'healthcare',name:'Healthcare & medication',icon:'💊',mandatory:true,base:.03,max:.12},
+ {id:'family',name:'Family support',icon:'🤝',mandatory:false,base:.04,max:.2},
+ {id:'rent',name:'Rent & housing',icon:'🏠',mandatory:true,base:.24,max:.42},
+ {id:'childcare',name:'Childcare & school fees',icon:'🎒',mandatory:true,base:.04,max:.18},
  {id:'debt',name:'Debt repayment',icon:'🧾',mandatory:false,base:.04,max:.2},
- {id:'fun',name:'Fun money',icon:'🎉',mandatory:false,base:.06,max:.2},
- {id:'savings',name:'Savings goal',icon:'🌱',mandatory:false,base:.07,max:.35},
- {id:'emergency',name:'Emergency fund',icon:'🛟',mandatory:false,base:.04,max:.25}
+ {id:'savings',name:'Savings & emergency fund',icon:'🛟',mandatory:false,base:.07,max:.35},
+ {id:'thrift',name:'Thrift contributions (ajo/esusu)',icon:'🤲',mandatory:false,base:.025,max:.2},
+ {id:'tithe',name:'Tithe (10% of salary)',icon:'⛪',mandatory:false,base:.10,max:.2},
+ {id:'gas',name:'Cooking gas',icon:'🔥',mandatory:true,base:.018,max:.08},
+ {id:'household',name:'Toiletries & household supplies',icon:'🧹',mandatory:true,base:.03,max:.12},
+ {id:'insurance',name:'Insurance',icon:'🛡️',mandatory:false,base:.02,max:.15},
+ {id:'fun',name:'Personal & social',icon:'🎉',mandatory:false,base:.02,max:.12}
 ];
 export function initialPriorities(){return Object.fromEntries(EXPENSES.map(x=>[x.id,x.mandatory||['savings','emergency','debt'].includes(x.id)?'protect':x.id==='fun'?'reduce':'important']))}
 const validPriority=value=>['protect','important','reduce'].includes(value)?value:null;
@@ -62,16 +72,17 @@ function normalizeGameSave(s){
  if(!s||typeof s!=='object'||!Number.isFinite(s.salary)||s.salary<50000||!Number.isFinite(s.currentDay)||s.currentDay<1||s.currentDay>30||!['playing','complete','over'].includes(s.gameStatus))return null;
  if(!['money','savings','debt','happiness','stress','health','financialStability','totalSpent'].every(k=>Number.isFinite(s[k])))return null;
  if([s.money,s.savings,s.debt,s.totalSpent].some(n=>n<0)||['happiness','stress','health','financialStability'].some(k=>s[k]<0||s[k]>100))return null;
- if(!s.expenses||typeof s.expenses!=='object'||EXPENSES.some(x=>!Number.isFinite(s.expenses[x.id])||s.expenses[x.id]<0))return null;
+ if(!s.expenses||typeof s.expenses!=='object'||Object.values(s.expenses).some(value=>!Number.isFinite(value)||value<0))return null;
  if(!Array.isArray(s.eventsCompleted)||s.eventsCompleted.some(id=>!EVENT_IDS.has(id)))return null;
  if(s.currentEvent&&(!EVENT_IDS.has(s.currentEvent.id)||!s.eventsCompleted.includes(s.currentEvent.id)))return null;
  if(s.salaryCurrency!==undefined&&!/^[A-Z]{3}$/.test(s.salaryCurrency))return null;
  if(s.salaryAmount!==undefined&&(!Number.isFinite(s.salaryAmount)||s.salaryAmount<=0))return null;
  if(s.exchangeRate!==undefined&&(!Number.isFinite(s.exchangeRate)||s.exchangeRate<=0))return null;
+ const expenses={...initialPlan(s.salary),...s.expenses};if(Number(s.expenses.tithe)===Math.round(s.salary*.025/1000)*1000)expenses.tithe=initialPlan(s.salary).tithe;expenses.savings=(Number(expenses.savings)||0)+(Number(s.expenses.emergency)||0);delete expenses.emergency;
  const currentEvent=s.currentEvent?EVENTS.find(event=>event.id===s.currentEvent.id):null;
  const priorities={...initialPriorities(),...Object.fromEntries(Object.entries(s.priorities||{}).filter(([key,value])=>EXPENSES.some(x=>x.id===key)&&validPriority(value)))};
- const spendingLog=Array.isArray(s.spendingLog)?s.spendingLog.filter(x=>x&&typeof x.id==='string'&&EXPENSES.some(category=>category.id===x.category)&&Number.isFinite(x.amount)&&x.amount>0&&x.amount<=1000000000).slice(-1000).map(x=>({id:x.id,category:x.category,amount:Math.round(x.amount),note:typeof x.note==='string'?x.note.slice(0,80):'',date:typeof x.date==='string'?x.date:''})):[];
- return {...s,priorities,spendingLog,salaryCurrency:s.salaryCurrency||'NGN',salaryAmount:Number.isFinite(s.salaryAmount)?s.salaryAmount:s.salary,exchangeRate:Number.isFinite(s.exchangeRate)?s.exchangeRate:1,exchangeRateDate:s.exchangeRateDate||null,exchangeRateStale:Boolean(s.exchangeRateStale),currentEvent};
+ const spendingLog=Array.isArray(s.spendingLog)?s.spendingLog.filter(x=>x&&typeof x.id==='string'&&(x.category==='emergency'||EXPENSES.some(category=>category.id===x.category))&&Number.isFinite(x.amount)&&x.amount>0&&x.amount<=1000000000).slice(-1000).map(x=>({id:x.id,category:x.category==='emergency'?'savings':x.category,amount:Math.round(x.amount),note:typeof x.note==='string'?x.note.slice(0,80):'',date:typeof x.date==='string'?x.date:''})):[];
+ return {...s,expenses,priorities,spendingLog,salaryCurrency:s.salaryCurrency||'NGN',salaryAmount:Number.isFinite(s.salaryAmount)?s.salaryAmount:s.salary,exchangeRate:Number.isFinite(s.exchangeRate)?s.exchangeRate:1,exchangeRateDate:s.exchangeRateDate||null,exchangeRateStale:Boolean(s.exchangeRateStale),currentEvent};
 }
 export function loadSave(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return null;const s=normalizeGameSave(JSON.parse(raw));if(!s)throw Error('Invalid save');return s}catch{try{localStorage.removeItem(STORAGE_KEY)}catch{}return null}}
 export function saveGame(s){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s))}catch{}}
